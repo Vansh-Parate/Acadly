@@ -23,7 +23,7 @@ import { motion } from 'framer-motion'
 import Header from '@/components/header'
 import SearchBar from '@/components/search-bar'
 import MatchingResults from '@/components/matching-results'
-import { getMockMentors } from '@/lib/data'
+import { API_BASE } from '@/lib/api'
 
 function DashboardContent() {
   const { user, logout } = useAuth()
@@ -35,7 +35,35 @@ function DashboardContent() {
   })
 
   useEffect(() => {
-    // TODO: When backend is ready, fetch stats from API and setStats
+    // Fetch dashboard stats later if needed
+  }, [])
+
+  const [mentors, setMentors] = useState<any[]>([])
+  useEffect(() => {
+    fetch(`${API_BASE}/mentors`)
+      .then((r) => r.json())
+      .then((d) =>
+        setMentors(
+          Array.isArray(d?.mentors)
+            ? d.mentors.map((m: any) => ({
+                id: m.id,
+                name: m.name || 'Mentor',
+                avatarUrl: m.avatarUrl || undefined,
+                subjects: String(m.profile?.subjects || '')
+                  .split(',')
+                  .map((s: string) => s.trim())
+                  .filter(Boolean),
+                rating: m.profile?.rating ?? 4.7,
+                hourlyRate: m.profile?.hourlyRate ?? 0,
+                successRate: m.profile?.successRate ?? 0.82,
+                aiScore: m.profile?.aiScore ?? 0.75,
+                availableNow: true,
+                bio: 'Experienced mentor',
+              }))
+            : []
+        )
+      )
+      .catch(() => setMentors([]))
   }, [])
 
   const handleLogout = () => logout()
@@ -85,8 +113,8 @@ function DashboardContent() {
         {/* Search bar and filters */}
         <SearchBar />
 
-        {/* Recommended mentors */}
-        <MatchingResults mentors={getMockMentors()} />
+        {/* Recommended mentors from backend */}
+        <MatchingResults mentors={mentors as any} />
 
         {/* My Sessions */}
         <Card>

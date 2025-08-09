@@ -24,9 +24,11 @@ async function main() {
 
   // Seed mentors
   const mentorInfos = [
-    { email: 'mentor.alex@example.com', name: 'Alex Mentor', subjects: 'Mathematics, Physics' },
-    { email: 'mentor.priya@example.com', name: 'Priya Mentor', subjects: 'Chemistry, Biology' },
-    { email: 'mentor.sam@example.com', name: 'Sam Mentor', subjects: 'Computer Science' },
+    { email: 'mentor.alex@example.com', name: 'Alex Mentor', subjects: 'Mathematics, Physics, Calculus' },
+    { email: 'mentor.priya@example.com', name: 'Priya Mentor', subjects: 'Chemistry, Biology, Organic Chem' },
+    { email: 'mentor.sam@example.com', name: 'Sam Mentor', subjects: 'Computer Science, Data Structures, Algorithms' },
+    { email: 'mentor.liu@example.com', name: 'Liu Mentor', subjects: 'Statistics, Linear Algebra' },
+    { email: 'mentor.rahul@example.com', name: 'Rahul Mentor', subjects: 'Mechanics, Thermodynamics' },
   ]
 
   const mentors = [] as { id: number; email: string; name: string }[]

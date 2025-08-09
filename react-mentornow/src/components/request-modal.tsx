@@ -1,111 +1,108 @@
-import * as React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { motion, useMotionValue, useTransform } from "framer-motion"
-import type { Mentor } from "@/components/user-card"
+import { useEffect, useState } from 'react'
+import Dialog, { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import type { Mentor } from '@/components/user-card'
+import { Input } from '@/components/ui/input'
+// using native select here for reliability and a minimal look
+import { Textarea } from '../components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { API_BASE } from '@/lib/api'
 
-const SUBJECTS = ["Math", "Physics", "Chemistry", "Biology", "CS", "Economics", "English", "History"]
-
-export default function RequestModal({
-  open,
-  onOpenChange,
-  mentor,
-}: {
+interface Props {
   open: boolean
-  onOpenChange: (open: boolean) => void
-  mentor?: Mentor
-}) {
-  const [message, setMessage] = React.useState("")
-  const [subject, setSubject] = React.useState<string>(mentor?.subjects?.[0] ?? "Math")
-  const urgencyMV = useMotionValue(0.4)
-  const urgency = useTransform(urgencyMV, [0, 1], [0, 1])
+  onOpenChange: (v: boolean) => void
+  mentor: (Mentor & { profile?: { subjects?: string | null } }) | null
+  token: string | null
+}
 
-  React.useEffect(() => {
-    const base = Math.min(1, message.length / 160)
-    const extra = /urgent|asap|now/i.test(message) ? 0.3 : 0
-    const bang = (message.match(/!/g) || []).length * 0.05
-    urgencyMV.set(Math.min(1, base + extra + bang))
-  }, [message, urgencyMV])
+export default function RequestModal({ open, onOpenChange, mentor, token }: Props) {
+  const DC = DialogContent as unknown as React.FC<React.PropsWithChildren<{ className?: string }>>
+  const [subjects, setSubjects] = useState<string[]>([])
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [image, setImage] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const submit = () => {
-    // TODO: hook backend
-    onOpenChange(false)
-    setMessage("")
+  useEffect(() => {
+    if (!mentor) return
+    // Prefer subjects coming from the mentor card (array), fallback to profile string
+    const fromCard = Array.isArray(mentor.subjects) ? mentor.subjects : []
+    const fromProfile = (mentor.profile?.subjects || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+    const opts = Array.from(new Set([...fromCard, ...fromProfile]))
+    setSubjects(opts)
+    setSubject(opts[0] || '')
+  }, [mentor])
+
+  const submit = async () => {
+    if (!open || !mentor || !token || !subject) return
+    setSubmitting(true)
+    try {
+      let payloadMessage = message
+      if (image) {
+        const b64 = await toBase64(image)
+        payloadMessage = `${message}\n[image:${b64.substring(0,48)}...]`
+      }
+      const res = await fetch(`${API_BASE}/sessions/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mentorId: mentor.id, subject, message: payloadMessage })
+      })
+      if (!res.ok) throw new Error('request-failed')
+      onOpenChange(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DC>
         <DialogHeader>
-          <DialogTitle>Request a session</DialogTitle>
-          <DialogDescription>
-            {mentor ? `Connect with ${mentor.name}` : "Send a quick request to a mentor"}
-          </DialogDescription>
+          <DialogTitle>Request mentoring with {mentor?.name || 'mentor'}</DialogTitle>
         </DialogHeader>
-
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Select value={subject} onValueChange={setSubject}>
-              <SelectTrigger id="subject">
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {SUBJECTS.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <label className="text-sm text-muted-foreground">Subject</label>
+            <select
+              value={subject}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSubject(e.target.value)}
+              className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 border-input"
+            >
+              {subjects.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="message">Message</Label>
-            <textarea
-              id="message"
-              placeholder="Briefly describe your question and what you need help with…"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={5}
-              className="border rounded-md bg-transparent p-2 text-sm"
-            />
+          <div>
+            <label className="text-sm text-muted-foreground">Question (optional)</label>
+            <Textarea value={message} onChange={(e)=>setMessage(e.target.value)} placeholder="Describe your question..." />
           </div>
-
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">AI urgency estimate</span>
-              <UrgencyBadge value={Number(urgency.get().toFixed(2))} />
-            </div>
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <motion.div
-                style={{ scaleX: urgency }}
-                className="h-full origin-left bg-foreground"
-                transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-              />
-            </div>
+          <div>
+            <label className="text-sm text-muted-foreground">Attach image (optional)</label>
+            <Input type="file" accept="image/*" onChange={(e)=>setImage(e.target.files?.[0] || null)} />
           </div>
         </div>
-
-        <DialogFooter className="mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit}>Send request</Button>
+        <DialogFooter>
+          <Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button>
+          <Button disabled={submitting || !subject || !mentor || !token} onClick={submit}>Send request</Button>
         </DialogFooter>
-      </DialogContent>
+      </DC>
     </Dialog>
   )
 }
 
-function UrgencyBadge({ value = 0.4 }: { value?: number }) {
-  const label = value > 0.75 ? "High" : value > 0.45 ? "Medium" : "Low"
-  const color =
-    value > 0.75 ? "bg-red-500/15 text-red-600 dark:text-red-400" :
-    value > 0.45 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-    "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs ${color}`}>
-      {label} ({Math.round(value * 100)}%)
-    </span>
-  )
+function toBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
+

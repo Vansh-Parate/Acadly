@@ -5,8 +5,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion, AnimatePresence } from "framer-motion"
 import EmptyState from "@/components/empty-state"
 import { Users } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function MatchingResults({ mentors = [] as Mentor[] }) {
+  const { token } = useAuth()
   const [sortBy, setSortBy] = useState<"best" | "rating" | "price">("best")
   const [activeMentor, setActiveMentor] = useState<Mentor | null>(null)
 
@@ -66,6 +68,7 @@ export default function MatchingResults({ mentors = [] as Mentor[] }) {
         open={!!activeMentor} 
         onOpenChange={(v) => !v && setActiveMentor(null)} 
         mentor={activeMentor ?? undefined} 
+        token={token}
       />
     </section>
   )

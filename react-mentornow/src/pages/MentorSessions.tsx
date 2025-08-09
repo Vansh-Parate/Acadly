@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { API_BASE } from '../lib/api'
+import { API_BASE, getSocket } from '../lib/api'
 import Header from '@/components/header'
-import { CalendarDays, MessageCircle, UserCircle2 } from 'lucide-react'
+import { CalendarDays, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import Dialog, { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 type Request = { id: number; studentId: number; subject: string; message: string | null; createdAt: string; student?: { name?: string | null; email?: string | null } }
 type Session = { id: number; subject: string; status: string; createdAt: string; student?: { name?: string | null; email?: string | null } }
 
 export default function MentorSessions() {
+  const DC = DialogContent as unknown as React.FC<React.PropsWithChildren<{ className?: string }>>
   const { token, user } = useAuth()
   const [requests, setRequests] = useState<Request[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
@@ -22,22 +25,56 @@ export default function MentorSessions() {
   const [newDate, setNewDate] = useState<string>("")
   const [newTime, setNewTime] = useState<string>("")
 
+  const initials = (s?: string | null) => {
+    const base = (s || '').trim()
+    if (!base) return 'U'
+    const parts = base.split(' ')
+    const letters = parts.length > 1 ? (parts[0][0] + parts[1][0]) : base[0]
+    return letters.toUpperCase()
+  }
+
+  const timeString = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+
   useEffect(() => {
     if (!token) return
     setLoading(true)
     const headers = { Authorization: `Bearer ${token}` }
     Promise.all([
       fetch(`${API_BASE}/mentor/requests`, { headers }).then(r => r.json()).catch(()=>({requests:[]})),
-      fetch(`${API_BASE}/sessions/history`, { headers }).then(r => r.json()).catch(()=>({sessions:[]})),
       fetch(`${API_BASE}/mentor/availability`, { headers }).then(r => r.json()).catch(()=>({availability:{active:false}})),
     ])
-      .then(([r, s, a]) => {
+      .then(([r, a]) => {
         setRequests(Array.isArray(r?.requests) ? r.requests : [])
-        setSessions(Array.isArray(s?.sessions) ? s.sessions : [])
+        setSessions([]) // start with no sessions; only show real-time/accepted ones
         setAvailabilityActive(Boolean(a?.availability?.active))
       })
       .finally(() => setLoading(false))
   }, [token])
+
+  // Realtime socket for mentor
+  useEffect(() => {
+    if (!user || user.role !== 'MENTOR') return
+    const ws = getSocket()
+    const onOpen = () => {
+      ws.send(JSON.stringify({ type: 'auth', userId: user.id, role: 'MENTOR' }))
+    }
+    ws.addEventListener('open', onOpen)
+    const onMessage = (ev: MessageEvent) => {
+      try {
+        const msg = JSON.parse(String(ev.data))
+        if (msg.type === 'new_request' && msg.request) {
+          setRequests(prev => [msg.request, ...prev])
+        }
+      } catch {
+        // ignore malformed ws message
+      }
+    }
+    ws.addEventListener('message', onMessage)
+    return () => {
+      ws.removeEventListener('message', onMessage)
+      ws.removeEventListener('open', onOpen)
+    }
+  }, [user])
 
   const upcoming = useMemo(() => {
     // Take the three most recent ACCEPTED sessions; if none, fall back to latest sessions
@@ -187,42 +224,47 @@ export default function MentorSessions() {
               <div className="px-4 py-3 border-b">
                 <h2 className="font-medium">Mentoring Requests ({requests.length})</h2>
               </div>
-              <div className="divide-y">
-                {loading ? (
-                  <div className="p-4 text-sm text-muted-foreground">Loading...</div>
-                ) : requests.length === 0 ? (
-                  <div className="p-6 text-sm text-muted-foreground">No pending requests</div>
-                ) : (
-                  <AnimatePresence initial={false}>
-                    {requests.slice(0,3).map((r) => (
-                      <motion.div
-                        key={r.id}
-                        layout
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.2 }}
-                        className="p-4 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                            <UserCircle2 className="h-5 w-5 text-muted-foreground" />
+              <ScrollArea style={{ maxHeight: 360 }}>
+                <div className="divide-y">
+                  {loading ? (
+                    <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+                  ) : requests.length === 0 ? (
+                    <div className="p-6 text-sm text-muted-foreground">No pending requests</div>
+                  ) : (
+                    <AnimatePresence initial={false}>
+                      {requests.map((r) => (
+                        <motion.div
+                          key={r.id}
+                          layout
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2 }}
+                          className="p-4 grid grid-cols-[1fr_auto] items-start gap-3"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                              {initials(r.student?.name || r.student?.email)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm font-medium truncate max-w-[180px]">{r.student?.name || r.student?.email || 'Mentee'}</div>
+                                {r.subject ? <Badge variant="secondary" className="text-[10px]">{r.subject}</Badge> : null}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">{timeString(r.createdAt)}</div>
+                              <button onClick={()=>openReschedule(r)} className="text-[11px] text-blue-600 underline mt-1">Change schedule</button>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{r.student?.name || r.student?.email || 'Mentee'}</div>
-                            <div className="text-[11px] text-muted-foreground">{new Date(r.createdAt).toLocaleString()}</div>
-                            <button onClick={()=>openReschedule(r)} className="text-[11px] text-blue-600 underline mt-1">Change schedule</button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={()=>accept(r.id)} className="rounded-md bg-blue-600 text-white px-2.5 py-1 text-xs hover:bg-blue-700">Accept</button>
+                            <button onClick={()=>decline(r.id)} className="rounded-md border px-2.5 py-1 text-xs">Decline</button>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={()=>accept(r.id)} className="rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700">Accept</button>
-                          <button onClick={()=>decline(r.id)} className="rounded-md border px-3 py-1.5 text-sm">Decline</button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                )}
-              </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </section>
 
@@ -250,12 +292,12 @@ export default function MentorSessions() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.2 }}
-                        className={`p-4 flex items-center justify-between gap-3 ${disabled ? 'opacity-60' : ''}`}
+                        className={`p-4 grid grid-cols-[1fr_auto] items-center gap-3 ${disabled ? 'opacity-60' : ''}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="rounded-md border px-2 py-1 text-center">
+                          <div className="rounded-md border px-2 py-1 text-center min-w-[64px]">
                             <div className="text-[10px] text-muted-foreground uppercase">{date.split(' ')[0]}</div>
-                            <div className="text-sm font-semibold">{date.split(' ')[1]}</div>
+                            <div className="text-base font-semibold leading-tight">{date.split(' ')[1]}</div>
                             <div className="text-[10px] text-muted-foreground">{time}</div>
                           </div>
                           <div>
@@ -263,7 +305,7 @@ export default function MentorSessions() {
                             <div className="text-sm font-medium">{s.student?.name || s.student?.email || 'Student'}</div>
                           </div>
                         </div>
-                        <button onClick={()=>!disabled && startMentoring(s)} disabled={disabled} className={`rounded-md px-3 py-1.5 text-sm ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                        <button onClick={()=>!disabled && startMentoring(s)} disabled={disabled} className={`rounded-md px-2.5 py-1 text-xs ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                           Start Mentoring
                         </button>
                       </motion.div>
@@ -308,8 +350,8 @@ export default function MentorSessions() {
         </div>
 
         {/* Reschedule Modal */}
-        <Dialog open={!!rescheduleFor} onOpenChange={(v)=>!v && setRescheduleFor(null)}>
-          <DialogContent>
+        <Dialog open={!!rescheduleFor} onOpenChange={(v: boolean)=>!v && setRescheduleFor(null)}>
+          <DC>
             <DialogHeader>
               <DialogTitle>Change schedule</DialogTitle>
             </DialogHeader>
@@ -327,7 +369,7 @@ export default function MentorSessions() {
               <Button variant="outline" onClick={()=>setRescheduleFor(null)}>Cancel</Button>
               <Button onClick={submitReschedule}>Save</Button>
             </DialogFooter>
-          </DialogContent>
+          </DC>
         </Dialog>
       </div>
     </div>

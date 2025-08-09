@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../prisma'
+import { broadcastToMentor } from '../index'
 
 const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
@@ -35,8 +36,10 @@ router.post('/request', requireAuth, async (req, res) => {
   if (!mentorId || !subject) return res.status(400).json({ error: 'mentorId and subject are required' })
   const created = await prisma.sessionRequest.create({
     data: { studentId, mentorId, subject, message },
-    select: { id: true, studentId: true, mentorId: true, subject: true, status: true, createdAt: true },
+    select: { id: true, studentId: true, mentorId: true, subject: true, status: true, createdAt: true, student: { select: { name: true, email: true } } },
   })
+  // Realtime notify mentor
+  broadcastToMentor(mentorId, { type: 'new_request', request: created })
   return res.status(201).json({ request: created })
 })
 
