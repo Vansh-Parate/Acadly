@@ -12,6 +12,7 @@ import MentorDashboard from './pages/MentorDashboard'
 import MentorProfile from './pages/MentorProfile'
 import MentorSessions from './pages/MentorSessions'
 import AdminDashboard from './pages/AdminDashboard'
+import MySessionsPage from './pages/MySessionsPage'
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute'
@@ -68,6 +69,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={["ADMIN"]}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/my-sessions" 
+                element={
+                  <ProtectedRoute allowedRoles={["STUDENT"]}>
+                    <MySessionsPage />
                   </ProtectedRoute>
                 } 
               />
