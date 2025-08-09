@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  password    String
+  name        String?
+  role        UserRole  @default(STUDENT)
+  avatarUrl   String?
+  profile     Profile?
+  aiInsights  Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sentRequests     SessionRequest[] @relation("StudentRequests")
+  receivedRequests SessionRequest[] @relation("MentorRequests")
+  sentMessages     ChatMessage[]    @relation("UserMessages")
+}
+
+model Profile {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  user        User      @relation(fields: [userId], references: [id])
+  bio         String?
+  subjects    String
+  rating      Float     @default(0)
+  hourlyRate  Int?
+  availability Json?
+  successRate Float     @default(0)
+  aiScore     Float     @default(0)
+}
+
+model SessionRequest {
+  id          Int       @id @default(autoincrement())
+  studentId   Int
+  mentorId    Int
+  subject     String
+  message     String?
+  urgencyScore Float    @default(0)
+  aiAnalysis  Json?
+  matchScore  Float?
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime  @default(now())
+
+  student     User      @relation("StudentRequests", fields: [studentId], references: [id])
+  mentor      User      @relation("MentorRequests", fields: [mentorId], references: [id])
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id          Int       @id @default(autoincrement())
+  sessionId   Int?
+  fromUserId  Int
+  message     String
+  isAiMessage Boolean   @default(false)
+  aiTopics    String[]
+  createdAt   DateTime  @default(now())
+
+  session     SessionRequest? @relation(fields: [sessionId], references: [id])
+  fromUser    User      @relation("UserMessages", fields: [fromUserId], references: [id])
+}
+
+enum UserRole { 
+  STUDENT 
+  MENTOR 
+  ADMIN 
+}
+
+enum RequestStatus { 
+  PENDING 
+  ACCEPTED 
+  REJECTED 
+  CANCELLED 
+  FINISHED 
+}

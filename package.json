@@ -1,0 +1,21 @@
+{
+  "name": "pixxelhack-round-2",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "server",
+    "react-mentornow"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w server\" \"npm run dev -w react-mentornow\"",
+    "build": "npm run build -w server && npm run build -w react-mentornow",
+    "start": "concurrently -n server,web -c blue,green \"npm start -w server\" \"npm run preview -w react-mentornow\"",
+    "format": "prettier -w \"**/*.{js,ts,tsx,css,md,json}\"",
+    "type-check": "npm run type-check -w server && npm run type-check -w react-mentornow"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "prettier": "^3.3.3"
+  }
+}
+
