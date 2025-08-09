@@ -9,6 +9,8 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import Dashboard from './pages/Dashboard'
 import MentorDashboard from './pages/MentorDashboard'
+import MentorProfile from './pages/MentorProfile'
+import MentorSessions from './pages/MentorSessions'
 import AdminDashboard from './pages/AdminDashboard'
 
 // Components
@@ -42,6 +44,22 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={["MENTOR"]}>
                     <MentorDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/mentor/profile" 
+                element={
+                  <ProtectedRoute allowedRoles={["MENTOR"]}>
+                    <MentorProfile />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/mentor/sessions" 
+                element={
+                  <ProtectedRoute allowedRoles={["MENTOR"]}>
+                    <MentorSessions />
                   </ProtectedRoute>
                 } 
               />

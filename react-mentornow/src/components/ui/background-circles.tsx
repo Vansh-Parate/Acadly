@@ -7,18 +7,18 @@ export function BackgroundCircles() {
     <>
       {/* Light mode background - clean gradients and subtle patterns */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 block dark:hidden">
-        {/* Main gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50/80" />
-        
-        {/* Subtle diagonal pattern */}
-        <div className="absolute inset-0 opacity-30">
+        {/* Main gradient overlay (very subtle) */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-indigo-50/30" />
+
+        {/* Subtle diagonal tint */}
+        <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-transparent via-blue-100/20 to-transparent" />
           <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-transparent via-indigo-100/15 to-transparent" />
         </div>
-        
+
         {/* Very subtle accent elements */}
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/30 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-gradient-to-tr from-indigo-100/25 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/15 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-gradient-to-tr from-indigo-100/15 to-transparent rounded-full blur-3xl" />
       </div>
 
       {/* Dark mode background - blue animated circles */}
