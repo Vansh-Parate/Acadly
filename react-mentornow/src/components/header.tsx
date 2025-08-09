@@ -22,7 +22,7 @@ export default function Header() {
           <Link to="/mentors" className="text-sm font-medium hover:text-blue-500 transition-colors">
             Find Mentors
           </Link>
-          <Link to="/sessions" className="text-sm font-medium hover:text-blue-500 transition-colors">
+          <Link to="/my-sessions" className="text-sm font-medium hover:text-blue-500 transition-colors">
             My Sessions
           </Link>
           <Link to="/profile" className="text-sm font-medium hover:text-blue-500 transition-colors">

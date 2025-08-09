@@ -10,6 +10,7 @@ import SignupPage from './pages/SignupPage'
 import Dashboard from './pages/Dashboard'
 import MentorDashboard from './pages/MentorDashboard'
 import AdminDashboard from './pages/AdminDashboard'
+import MySessionsPage from './pages/MySessionsPage'
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute'
@@ -50,6 +51,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={["ADMIN"]}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/my-sessions" 
+                element={
+                  <ProtectedRoute allowedRoles={["STUDENT"]}>
+                    <MySessionsPage />
                   </ProtectedRoute>
                 } 
               />

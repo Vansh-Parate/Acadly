@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import ProtectedRoute  from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -97,21 +98,15 @@ function DashboardContent() {
             <CardDescription>Your upcoming and recent sessions</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Calculus tutoring with Alex Carter</div>
-                  <div className="text-xs text-muted-foreground">Today • 6:00 PM • 45 min</div>
-                </div>
-                <Button size="sm" variant="outline">Join</Button>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                View detailed information about your sessions, progress, and analytics
               </div>
-              <div className="rounded-lg border p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Chemistry review with Priya Shah</div>
-                  <div className="text-xs text-muted-foreground">Tomorrow • 5:30 PM • 30 min</div>
-                </div>
-                <Button size="sm" variant="outline">View</Button>
-              </div>
+              <Link to="/my-sessions">
+                <Button>
+                  View All Sessions
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
