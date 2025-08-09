@@ -20,7 +20,7 @@ export default function Header() {
     return [
       { to: '/dashboard', label: 'Dashboard' },
       { to: '/mentors', label: 'Find Mentors' },
-      { to: '/sessions', label: 'My Sessions' },
+      { to: '/my-sessions', label: 'My Sessions' },
       { to: '/profile', label: 'Profile' },
     ]
   })()

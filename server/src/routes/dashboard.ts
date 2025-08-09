@@ -77,7 +77,15 @@ router.get('/student/sessions', async (req, res) => {
       totalCost: null, // TODO: Add cost calculation
       progress: getProgressForSession(session.status),
       topics: extractTopicsFromMessage(session.message || ''),
-      aiAnalysis: session.aiAnalysis ? JSON.parse(session.aiAnalysis as string) : null
+      aiAnalysis: (() => {
+        const value = session.aiAnalysis as unknown
+        if (!value) return null
+        if (typeof value === 'string') {
+          try { return JSON.parse(value) } catch { return value }
+        }
+        // Already a JSON object (Prisma JsonValue)
+        return value
+      })()
     }))
 
     res.json(formattedSessions)
