@@ -2,7 +2,7 @@
 
 This repository contains two apps:
 
-- `react-mentornow/` – React (Vite) frontend
+- `react-mentornow/` – React (Vite) frontend (Acadly)
 - `server/` – Express backend with Prisma (PostgreSQL/Neon)
 
 ## Getting Started

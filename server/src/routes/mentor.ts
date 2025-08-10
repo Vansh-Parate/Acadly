@@ -91,6 +91,24 @@ router.get('/requests', requireMentor, async (req, res) => {
   return res.json({ requests })
 })
 
+// GET /mentor/upcoming-sessions (accepted)
+router.get('/upcoming-sessions', requireMentor, async (req, res) => {
+  const userId = (req as any).userId as number
+  const sessions = await prisma.sessionRequest.findMany({
+    where: { mentorId: userId, status: 'ACCEPTED' as any },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      studentId: true,
+      subject: true,
+      message: true,
+      createdAt: true,
+      student: { select: { email: true, name: true } },
+    },
+  })
+  return res.json({ sessions })
+})
+
 // PUT /mentor/requests/:id/accept
 router.put('/requests/:id/accept', requireMentor, async (req, res) => {
   const userId = (req as any).userId as number

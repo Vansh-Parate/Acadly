@@ -27,12 +27,16 @@ export default function LandingHeader() {
             initial={{ rotate: -8, scale: 0.9, opacity: 0 }}
             animate={{ rotate: 0, scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="h-8 w-8 rounded-lg bg-foreground/10 flex items-center justify-center"
+            className="h-8 w-8 flex items-center justify-center"
             aria-hidden="true"
           >
-            <Sparkles className="h-4 w-4" />
+            <img 
+              src="/acadly_logo.png" 
+              alt="Acadly Logo" 
+              className="h-8 w-8"
+            />
           </motion.div>
-          <span className="font-semibold text-lg">MentorNow</span>
+          <span className="font-semibold text-lg">Acadly</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm">
@@ -55,7 +59,7 @@ export default function LandingHeader() {
             <Link to="/login">Sign in</Link>
           </Button>
           <Button asChild>
-            <Link to="/dashboard">Get started</Link>
+            <Link to="/signup">Get started</Link>
           </Button>
         </div>
       </div>

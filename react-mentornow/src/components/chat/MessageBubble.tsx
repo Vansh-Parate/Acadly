@@ -1,140 +1,237 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Download, File, Image, FileText, Check, CheckCheck } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { format } from 'date-fns'
+import { 
+  FileText, 
+  Image, 
+  Video, 
+  Music, 
+  Archive, 
+  File,
+  Download,
+  ExternalLink
+} from 'lucide-react'
 
 interface ChatMessage {
-  id: number
+  id: string
   sessionId: number
   fromUserId: number
   message: string
-  messageType: 'text' | 'system' | 'file'
-  isRead: boolean
-  createdAt: string
-  fileUrl?: string
-  fileName?: string
+  isAiMessage: boolean
+  aiTopics: string[]
+  createdAt: Date
   fromUser: {
     id: number
     name: string
-    role: 'STUDENT' | 'MENTOR'
     avatarUrl?: string
   }
+  fileUrl?: string
+  fileName?: string
+  fileSize?: number
+  fileType?: string
 }
 
 interface MessageBubbleProps {
   message: ChatMessage
   isOwnMessage: boolean
+  currentUser: {
+    id: number
+    name: string
+    avatarUrl?: string
+  }
 }
 
-export default function MessageBubble({ message, isOwnMessage }: MessageBubbleProps) {
-  const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase()
-    switch (extension) {
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-      case 'svg':
-        return <Image className="h-4 w-4" />
-      case 'pdf':
-        return <FileText className="h-4 w-4" />
-      default:
-        return <File className="h-4 w-4" />
+const getFileIcon = (fileType?: string) => {
+  if (!fileType) return <File className="h-4 w-4" />
+  
+  const type = fileType.toLowerCase()
+  if (type.includes('image')) return <Image className="h-4 w-4" />
+  if (type.includes('video')) return <Video className="h-4 w-4" />
+  if (type.includes('audio') || type.includes('music')) return <Music className="h-4 w-4" />
+  if (type.includes('pdf') || type.includes('document')) return <FileText className="h-4 w-4" />
+  if (type.includes('zip') || type.includes('rar')) return <Archive className="h-4 w-4" />
+  return <File className="h-4 w-4" />
+}
+
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return 'Unknown size'
+  
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+const formatTime = (date: Date) => {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(new Date(date))
+}
+
+export default function MessageBubble({ message, isOwnMessage, currentUser }: MessageBubbleProps) {
+  const messageVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 20, 
+      scale: 0.95,
+      x: isOwnMessage ? 20 : -20
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      x: 0,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
+      }
     }
   }
 
-  const handleFileDownload = () => {
-    if (message.fileUrl) {
-      const link = document.createElement('a')
-      link.href = message.fileUrl
-      link.download = message.fileName || 'download'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+  const bubbleVariants = {
+    hover: {
+      scale: 1.02,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut"
+      }
     }
-  }
-
-  if (message.messageType === 'system') {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex justify-center my-4"
-      >
-        <Badge variant="secondary" className="text-xs">
-          {message.message}
-        </Badge>
-      </motion.div>
-    )
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}
+      variants={messageVariants}
+      initial="hidden"
+      animate="visible"
+      whileHover="hover"
     >
-      <div className={`flex ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} items-end space-x-2 max-w-[70%]`}>
+      <div className={`flex items-end gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* Avatar */}
         {!isOwnMessage && (
-          <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarImage src={message.fromUser.avatarUrl} />
-            <AvatarFallback className="text-xs">
-              {message.fromUser.name.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={message.fromUser.avatarUrl} />
+              <AvatarFallback className="text-xs">
+                {message.fromUser.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </motion.div>
         )}
-        
-        <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-          {!isOwnMessage && (
-            <span className="text-xs text-muted-foreground mb-1">
+
+        {/* Message Content */}
+        <motion.div
+          variants={bubbleVariants}
+          className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}
+        >
+          {/* Message Bubble */}
+          <Card className={`max-w-full ${
+            isOwnMessage 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-muted'
+          }`}>
+            <CardContent className="p-3">
+              {/* File Attachment */}
+              {message.fileUrl && (
+                <motion.div
+                  className="mb-2 p-2 bg-background/20 rounded-lg border"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-2">
+                    {getFileIcon(message.fileType)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {message.fileName || 'File'}
+                      </p>
+                      <p className="text-xs opacity-70">
+                        {formatFileSize(message.fileSize)}
+                      </p>
+                    </div>
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <a
+                        href={message.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-background/20 rounded"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Message Text */}
+              {message.message && (
+                <motion.p
+                  className="text-sm whitespace-pre-wrap break-words"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {message.message}
+                </motion.p>
+              )}
+
+              {/* AI Message Indicator */}
+              {message.isAiMessage && (
+                <motion.div
+                  className="mt-2 flex items-center gap-1"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Badge variant="secondary" className="text-xs">
+                    AI Assistant
+                  </Badge>
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Message Info */}
+          <motion.div
+            className={`flex items-center gap-2 mt-1 text-xs opacity-70 ${
+              isOwnMessage ? 'flex-row-reverse' : 'flex-row'
+            }`}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <span className="text-xs">
               {message.fromUser.name}
             </span>
-          )}
-          
-          <div
-            className={`rounded-lg px-4 py-2 max-w-full ${
-              isOwnMessage
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted'
-            }`}
-          >
-            {message.messageType === 'file' ? (
-              <div className="flex items-center space-x-2">
-                {getFileIcon(message.fileName || '')}
-                <span className="text-sm font-medium">
-                  {message.fileName || 'File'}
-                </span>
-                <button
-                  onClick={handleFileDownload}
-                  className="p-1 hover:bg-black/10 rounded"
-                >
-                  <Download className="h-3 w-3" />
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm whitespace-pre-wrap break-words">
-                {message.message}
-              </p>
-            )}
-          </div>
-          
-          <div className={`flex items-center space-x-1 mt-1 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-            <span className="text-xs text-muted-foreground">
-              {format(new Date(message.createdAt), 'HH:mm')}
+            <span className="text-xs">
+              {formatTime(message.createdAt)}
             </span>
-            {isOwnMessage && (
-              <div className="flex items-center">
-                {message.isRead ? (
-                  <CheckCheck className="h-3 w-3 text-blue-500" />
-                ) : (
-                  <Check className="h-3 w-3 text-muted-foreground" />
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Avatar for own messages */}
+        {isOwnMessage && (
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={currentUser.avatarUrl} />
+              <AvatarFallback className="text-xs">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </motion.div>
+        )}
       </div>
     </motion.div>
   )

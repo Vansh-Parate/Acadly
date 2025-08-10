@@ -8,10 +8,14 @@ export default function LandingFooter() {
         <div className="grid gap-8 md:grid-cols-4">
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-foreground/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4" />
+              <div className="h-8 w-8 flex items-center justify-center">
+                <img 
+                  src="/acadly_logo.png" 
+                  alt="Acadly Logo" 
+                  className="h-8 w-8"
+                />
               </div>
-              <span className="font-semibold text-lg">MentorNow</span>
+              <span className="font-semibold text-lg">Acadly</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               AI-powered platform connecting students with expert mentors for instant, personalized help.
@@ -66,7 +70,7 @@ export default function LandingFooter() {
 
         <div className="border-t pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2024 MentorNow. All rights reserved.
+            © 2024 Acadly. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm">
             <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">

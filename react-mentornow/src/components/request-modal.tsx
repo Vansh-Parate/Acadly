@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '../components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { API_BASE } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Props {
   open: boolean
@@ -50,9 +51,12 @@ export default function RequestModal({ open, onOpenChange, mentor, token }: Prop
         body: JSON.stringify({ mentorId: mentor.id, subject, message: payloadMessage })
       })
       if (!res.ok) throw new Error('request-failed')
+      
+      toast.success(`Request sent to ${mentor.name}! They'll respond soon.`)
       onOpenChange(false)
     } catch (e) {
       console.error(e)
+      toast.error('Failed to send request. Please try again.')
     } finally {
       setSubmitting(false)
     }

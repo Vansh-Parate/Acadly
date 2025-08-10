@@ -43,7 +43,7 @@ export default function LandingHero() {
             className="flex flex-col sm:flex-row gap-4"
           >
             <Button size="lg" className="gap-2" asChild>
-              <Link to="/dashboard">
+              <Link to="/signup">
                 Start learning now
                 <ArrowRight className="h-4 w-4" />
               </Link>

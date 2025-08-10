@@ -1,321 +1,570 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { LogOut, GraduationCap, Users2, CalendarDays, CheckCircle2, Award, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { API_BASE } from '../lib/api'
-import Header from '@/components/header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
-import { AnimatedHighlightedAreaChart } from '@/components/ui/animated-highlighted-chart'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import Dialog, { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { 
+  BookOpen, 
+  Users, 
+  MessageSquare, 
+  Calendar,
+  GraduationCap,
+  Star,
+  TrendingUp,
+  Settings,
+  LogOut,
+  User,
+  Clock,
+  Target,
+  Bell,
+  BarChart3,
+  Video,
+  FileText,
+  CheckCircle,
+  XCircle
+} from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE } from '@/lib/api'
+import { toast } from 'sonner'
+import ChatWindow from '@/components/chat/ChatWindow'
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  },
+  hover: {
+    scale: 1.02,
+    transition: {
+      duration: 0.2,
+      ease: "easeInOut"
+    }
+  }
+}
+
+const dialogVariants = {
+  hidden: { opacity: 0, scale: 0.8, y: 20 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut"
+    }
+  }
+}
 
 export default function MentorDashboard() {
-  const { user, token, logout } = useAuth()
-  const [availability, setAvailability] = useState<{ active: boolean; slots: Array<{ day: string; start: string; end: string }> }>({ active: false, slots: [] })
-  const [pending, setPending] = useState<Array<{ id: number; studentId: number; subject: string; message: string | null; createdAt: string }>>([])
-  const [loading, setLoading] = useState(false)
-  const [overview, setOverview] = useState<{ totalMentees: number; upcomingSessions: number; attendanceProgress: number; rewardPoints: number; totals: { totalSessions: number; acceptedSessions: number; thisMonth: number; thisWeek: number } } | null>(null)
-  const [allSessions, setAllSessions] = useState<Array<{ id: number; subject: string; status: string; createdAt: string; student?: { email?: string | null; name?: string | null } }>>([])
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [dayIndex, setDayIndex] = useState<number | null>(null)
-  const [page, setPage] = useState(1)
-  const pageSize = 8
+  const { user } = useAuth()
+  const [requests, setRequests] = useState<any[]>([])
+  const [acceptedSessions, setAcceptedSessions] = useState<any[]>([])
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([])
+  const [chatOpen, setChatOpen] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!token || user?.role !== 'MENTOR') return
-    const headers = { Authorization: `Bearer ${token}` }
-    Promise.all([
-      fetch(`${API_BASE}/mentor/availability`, { headers }).then(r => r.json()),
-      fetch(`${API_BASE}/mentor/requests`, { headers }).then(r => r.json()),
-      fetch(`${API_BASE}/mentor/overview`, { headers }).then(r => r.json()),
-      fetch(`${API_BASE}/sessions/history`, { headers }).then(r => r.json()),
-    ]).then(([a, r, o, h]) => {
-      if (a?.availability) setAvailability(a.availability)
-      if (r?.requests) setPending(r.requests)
-      if (o) setOverview(o)
-      if (Array.isArray(h?.sessions)) setAllSessions(h.sessions)
-    }).catch(() => {}).finally(() => setLoading(false))
-  }, [token, user?.role])
+    fetchRequests()
+    fetchAcceptedSessions()
+    fetchUpcomingSessions()
+  }, [])
 
-  const weekDates = (() => {
-    const now = new Date()
-    now.setHours(0,0,0,0)
-    const start = new Date(now)
-    start.setDate(start.getDate() - start.getDay() + weekOffset*7)
-    const arr: number[] = []
-    for (let i=0;i<7;i++){ const d=new Date(start); d.setDate(start.getDate()+i); arr.push(d.getDate()) }
-    const end = new Date(start); end.setDate(start.getDate()+6)
-    const format = (d: Date) => d.toLocaleDateString(undefined,{ day:'2-digit', month:'short'})
-    return { days: arr, label: `${format(start)} - ${format(end)}` }
-  })()
-
-  const filteredSessions = (() => {
-    const now = new Date()
-    now.setHours(0,0,0,0)
-    const start = new Date(now)
-    start.setDate(start.getDate() - start.getDay() + weekOffset*7)
-    const end = new Date(start)
-    end.setDate(start.getDate()+7)
-    const sessionsInWeek = allSessions.filter(s => {
-      const d = new Date(s.createdAt)
-      return d >= start && d < end
-    })
-    if (dayIndex === null) return sessionsInWeek
-    const dayDate = new Date(start)
-    dayDate.setDate(start.getDate()+dayIndex)
-    return sessionsInWeek.filter(s => {
-      const d = new Date(s.createdAt)
-      return d.getFullYear()===dayDate.getFullYear() && d.getMonth()===dayDate.getMonth() && d.getDate()===dayDate.getDate()
-    })
-  })()
-
-  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / pageSize))
-  const currentPage = Math.min(page, totalPages)
-  const pageItems = filteredSessions.slice((currentPage-1)*pageSize, currentPage*pageSize)
-
-  const activityData = (() => {
-    // last 14 days
-    const days = 14
-    const today = new Date()
-    today.setHours(0,0,0,0)
-    const arr: { date: string; sessions: number }[] = []
-    for (let i=days-1;i>=0;i--) {
-      const d = new Date(today)
-      d.setDate(today.getDate()-i)
-      const count = allSessions.filter(s => {
-        const t = new Date(s.createdAt)
-        return t.getFullYear()===d.getFullYear() && t.getMonth()===d.getMonth() && t.getDate()===d.getDate()
-      }).length
-      arr.push({ date: d.toLocaleDateString(undefined,{ month:'short', day:'numeric'}), sessions: count })
+  const fetchRequests = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE}/mentor/requests`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      setRequests(data.requests || [])
+    } catch (error) {
+      console.error('Error fetching requests:', error)
     }
-    return arr
-  })()
-
-  const chartTwoSeries = (() => {
-    const days = 14
-    const today = new Date()
-    today.setHours(0,0,0,0)
-    const rows: { month: string; desktop: number; mobile: number }[] = []
-    for (let i=days-1;i>=0;i--) {
-      const d = new Date(today)
-      d.setDate(today.getDate()-i)
-      const label = d.toLocaleDateString(undefined,{ month:'short', day:'numeric'})
-      const total = allSessions.filter(s => {
-        const t = new Date(s.createdAt)
-        return t.getFullYear()===d.getFullYear() && t.getMonth()===d.getMonth() && t.getDate()===d.getDate()
-      }).length
-      const finished = allSessions.filter(s => {
-        const t = new Date(s.createdAt)
-        return s.status==='FINISHED' && t.getFullYear()===d.getFullYear() && t.getMonth()===d.getMonth() && t.getDate()===d.getDate()
-      }).length
-      rows.push({ month: label, desktop: total, mobile: finished })
-    }
-    return rows
-  })()
-
-  const toggleAvailability = async () => {
-    if (!token) return
-    const next = { active: !availability.active, slots: availability.slots }
-    setAvailability(next)
-    await fetch(`${API_BASE}/mentor/availability`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(next),
-    })
   }
 
-  const accept = async (id: number) => {
-    if (!token) return
-    await fetch(`${API_BASE}/mentor/requests/${id}/accept`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } })
-    setPending(prev => prev.filter(p => p.id !== id))
+  const fetchAcceptedSessions = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE}/chat/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      setAcceptedSessions(data.sessions || [])
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching accepted sessions:', error)
+      setLoading(false)
+    }
   }
 
-  const decline = async (id: number) => {
-    if (!token) return
-    await fetch(`${API_BASE}/mentor/requests/${id}/decline`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } })
-    setPending(prev => prev.filter(p => p.id !== id))
+  const fetchUpcomingSessions = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE}/mentor/upcoming-sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      setUpcomingSessions(data.sessions || [])
+    } catch (error) {
+      console.error('Error fetching upcoming sessions:', error)
+      // If the endpoint doesn't exist yet, we'll use accepted sessions as upcoming
+      setUpcomingSessions([])
+    }
+  }
+
+  const accept = async (requestId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE}/mentor/requests/${requestId}/accept`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        // Find the request that was accepted
+        const acceptedRequest = requests.find(req => req.id === requestId)
+        if (acceptedRequest) {
+          // Create new upcoming session with animation data
+          const newUpcomingSession = {
+            ...acceptedRequest,
+            status: 'ACCEPTED',
+            acceptedAt: new Date().toISOString(),
+            // Add animation properties
+            animateIn: true,
+            fromPending: true
+          }
+          
+          // Add to upcoming sessions with animation
+          setUpcomingSessions(prev => [newUpcomingSession, ...prev])
+          
+          // Remove from pending requests with animation
+          setRequests(prev => prev.filter(req => req.id !== requestId))
+          
+          // Update stats
+          const updatedStats = stats.map(stat => 
+            stat.title === "Pending Requests" 
+              ? { ...stat, value: (requests.length - 1).toString() }
+              : stat.title === "Upcoming Sessions"
+              ? { ...stat, value: (upcomingSessions.length + 1).toString() }
+              : stat
+          )
+        }
+        
+        // Refresh other data
+        fetchAcceptedSessions()
+        toast.success('Request accepted!')
+      } else {
+        toast.error('Failed to accept request.')
+      }
+    } catch (error) {
+      console.error('Error accepting request:', error)
+      toast.error('Failed to accept request.')
+    }
+  }
+
+  const decline = async (requestId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_BASE}/mentor/requests/${requestId}/decline`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        // Remove from pending requests with animation
+        setRequests(prev => prev.filter(req => req.id !== requestId))
+        
+        // Update stats
+        const updatedStats = stats.map(stat => 
+          stat.title === "Pending Requests" 
+            ? { ...stat, value: (requests.length - 1).toString() }
+            : stat
+        )
+        toast.success('Request declined.')
+      } else {
+        toast.error('Failed to decline request.')
+      }
+    } catch (error) {
+      console.error('Error declining request:', error)
+      toast.error('Failed to decline request.')
+    }
+  }
+
+  const startChat = (session: any) => {
+    setSelectedSession(session)
+    setChatOpen(true)
+  }
+
+  const stats = [
+    { title: "Total Students", value: "45", icon: Users, color: "text-blue-500", desc: "Active students" },
+    { title: "Sessions Completed", value: "127", icon: Target, color: "text-green-500", desc: "Successfully completed" },
+    { title: "Pending Requests", value: requests.length.toString(), icon: Clock, color: "text-yellow-500", desc: "Awaiting response" },
+    { title: "Upcoming Sessions", value: upcomingSessions.length.toString(), icon: Calendar, color: "text-purple-500", desc: "Scheduled sessions" }
+  ]
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center gap-2"
+        >
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span>Loading dashboard...</span>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Welcome <span className="align-middle">👋</span></h1>
-            <p className="text-muted-foreground text-sm">You have upcoming sessions</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm">
-              <GraduationCap className="inline mr-1 h-4 w-4" />
-              Mentor
-            </div>
-          </div>
+    <motion.div 
+      className="min-h-screen bg-background p-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <motion.div variants={itemVariants} className="text-center">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
+            Mentor Dashboard
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Welcome back, {user?.name}! Here's your mentoring overview.
+          </p>
+        </motion.div>
+
+        {/* Stats Cards */}
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          variants={containerVariants}
+        >
+          {stats.map((stat, index) => (
+            <motion.div key={stat.title} variants={cardVariants} whileHover="hover">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">{stat.desc}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Pending Requests */}
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Pending Requests
+                </CardTitle>
+                <CardDescription>
+                  Students waiting for your response
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {requests.length === 0 ? (
+                    <motion.div 
+                      className="text-center py-8"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No pending requests</h3>
+                      <p className="text-muted-foreground">All requests have been processed!</p>
+                    </motion.div>
+                  ) : (
+                    <AnimatePresence>
+                      {requests.map((request, index) => (
+                        <motion.div
+                          key={request.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                          transition={{ delay: index * 0.1 }}
+                          whileHover={{ scale: 1.02 }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={request.student?.avatarUrl} />
+                              <AvatarFallback>
+                                {request.student?.name?.charAt(0) || 'S'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{request.student?.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {request.subject} • {request.duration} minutes
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                              <Button
+                                size="sm"
+                                onClick={() => accept(request.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Accept
+                              </Button>
+                            </motion.div>
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => decline(request.id)}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Decline
+                              </Button>
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Upcoming Sessions */}
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Upcoming Sessions
+                </CardTitle>
+                <CardDescription>
+                  Accepted sessions ready to start
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {upcomingSessions.length === 0 ? (
+                    <motion.div 
+                      className="text-center py-8"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No upcoming sessions</h3>
+                      <p className="text-muted-foreground">Accept requests to see upcoming sessions here!</p>
+                    </motion.div>
+                  ) : (
+                    <AnimatePresence>
+                      {upcomingSessions.map((session, index) => (
+                        <motion.div
+                          key={session.id}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-green-50 dark:bg-green-950/20"
+                          initial={session.fromPending ? { opacity: 0, y: -20, scale: 0.9 } : { opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ 
+                            delay: session.fromPending ? 0 : index * 0.1,
+                            duration: session.fromPending ? 0.4 : 0.3,
+                            type: session.fromPending ? "spring" : "easeOut"
+                          }}
+                          whileHover={{ scale: 1.02 }}
+                          onAnimationComplete={() => {
+                            // Remove animation flags after animation completes
+                            if (session.fromPending) {
+                              setUpcomingSessions(prev => 
+                                prev.map(s => 
+                                  s.id === session.id 
+                                    ? { ...s, fromPending: false, animateIn: false }
+                                    : s
+                                )
+                              )
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={session.student?.avatarUrl} />
+                              <AvatarFallback>
+                                {session.student?.name?.charAt(0) || 'S'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{session.student?.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {session.subject} • Accepted {session.acceptedAt ? new Date(session.acceptedAt).toLocaleDateString() : 'recently'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                              <Button
+                                size="sm"
+                                onClick={() => startChat(session)}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                <MessageSquare className="h-4 w-4 mr-1" />
+                                Start Session
+                              </Button>
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
-        {/* Top nav is handled by shared Header with mentor-aware links */}
 
-         {/* KPI row - pixel-perfect to reference */}
-         <div className="grid gap-4 md:grid-cols-5 mb-6">
-           <Card className="shadow-sm">
-             <CardContent className="py-2">
-               <div className="flex items-center gap-3">
-                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10">
-                   <Users2 className="h-3.5 w-3.5 text-blue-500" />
-                 </span>
-                 <div>
-                   <div className="text-base font-semibold leading-none">{overview?.totalMentees ?? 0}</div>
-                   <div className="text-[10px] text-muted-foreground mt-1">Total Mentee</div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
-           <Card className="shadow-sm">
-             <CardContent className="py-2">
-               <div className="flex items-center gap-3">
-                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10">
-                   <CalendarDays className="h-3.5 w-3.5 text-violet-500" />
-                 </span>
-                 <div>
-                   <div className="text-base font-semibold leading-none">{overview?.upcomingSessions ?? 0}</div>
-                   <div className="text-[10px] text-muted-foreground mt-1">Upcoming Session</div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
-           <Card className="shadow-sm">
-             <CardContent className="py-2">
-               <div className="flex items-center gap-3">
-                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
-                   <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />
-                 </span>
-                 <div>
-                   <div className="text-base font-semibold leading-none">{overview?.attendanceProgress ?? 0}%</div>
-                   <div className="text-[10px] text-muted-foreground mt-1">Attendance Progress</div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
-           <Card className="shadow-sm">
-             <CardContent className="py-2">
-               <div className="flex items-center gap-3">
-                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-pink-500/10">
-                   <Award className="h-3.5 w-3.5 text-pink-500" />
-                 </span>
-                 <div>
-                   <div className="text-base font-semibold leading-none">{overview?.rewardPoints ?? 0}</div>
-                   <div className="text-[10px] text-muted-foreground mt-1">Reward Points</div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
-           <Card className="shadow-sm">
-             <CardContent className="py-2">
-               <div className="flex items-center justify-between text-xs font-medium">
-                 <button className="p-1 rounded hover:bg-muted" onClick={() => setWeekOffset(weekOffset-1)}><ChevronLeft className="h-4 w-4" /></button>
-                 <span className="px-2 py-1 rounded bg-muted text-foreground">{weekDates.label}</span>
-                 <button className="p-1 rounded hover:bg-muted" onClick={() => setWeekOffset(weekOffset+1)}><ChevronRight className="h-4 w-4" /></button>
-               </div>
-               <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] text-muted-foreground">
-                 {weekDates.days.map((n,i)=> (
-                   <button key={i} className="text-center" onClick={() => { setDayIndex(i===dayIndex ? null : i); setPage(1) }}>
-                     <span className={"inline-block min-w-6 rounded-sm py-0.5 " + (i===dayIndex ? 'bg-foreground text-background' : 'bg-muted')}>{n}</span>
-                   </button>
-                 ))}
-               </div>
-             </CardContent>
-           </Card>
-         </div>
-        
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* My Mentor Activity - animated two-series sample dataset */}
-          <div className="md:col-span-2">
-            <AnimatedHighlightedAreaChart />
-          </div>
-
-          {/* Overview moved up (replaces students chart) */}
+        {/* Mentee List */}
+        <motion.div variants={itemVariants}>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {[
-                  {label:'Total Sessions',value:overview?.totals.totalSessions ?? 0,sign:'+'},
-                  {label:'Accepted',value:overview?.totals.acceptedSessions ?? 0,sign:'+'},
-                  {label:'Finished',value:overview?.finishedSessions ?? 0,sign:'+'},
-                  {label:'Cancelled',value:overview?.cancelledSessions ?? 0,sign:'-'},
-                  {label:'This Month',value:overview?.totals.thisMonth ?? 0,sign:'+'},
-                  {label:'This Week',value:overview?.totals.thisWeek ?? 0,sign:'+'},
-                ].map((s)=> (
-                  <div key={s.label} className="rounded-lg border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-muted-foreground">{s.label}</div>
-                      {s.sign === '+' ? (
-                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 text-red-500" />
-                      )}
-                    </div>
-                    <div className="font-semibold mt-1 text-base">{String(s.value)}</div>
-                  </div>
-                ))}
-                {overview?.topSubject ? (
-                  <div className="rounded-lg border p-3 col-span-2">
-                    <div className="text-muted-foreground">Top Subject (Month)</div>
-                    <div className="font-semibold mt-1 text-base">{overview.topSubject}</div>
-                  </div>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Mentee List full width */}
-        <div className="grid gap-6 md:grid-cols-3 mt-6">
-          <Card className="md:col-span-3">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Mentee List</CardTitle>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Mentee List
+              </CardTitle>
+              <CardDescription>
+                All students you're currently mentoring
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-muted-foreground border-b">
-                    <tr>
-                      <th className="text-left py-2">ID</th>
-                      <th className="text-left py-2">Date</th>
-                      <th className="text-left py-2">Student</th>
-                      <th className="text-left py-2">Subject</th>
-                      <th className="text-left py-2">Status</th>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Student</th>
+                      <th className="text-left p-2">Subject</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">Last Session</th>
+                      <th className="text-left p-2">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pageItems.map((s)=> (
-                      <tr key={s.id} className="border-b last:border-0">
-                        <td className="py-3">RX-{String(s.id).padStart(4,'0')}</td>
-                        <td>{new Date(s.createdAt).toLocaleString()}</td>
-                        <td>{s.student?.name || s.student?.email || '—'}</td>
-                        <td>{s.subject || '—'}</td>
-                        <td>
-                          <span className={'px-2 py-1 rounded-full text-xs ' + (s.status==='FINISHED' ? 'bg-emerald-100 text-emerald-700' : s.status==='PENDING' ? 'bg-yellow-100 text-yellow-700' : s.status==='ACCEPTED' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700')}>{s.status}</span>
+                    {acceptedSessions.map((session, index) => (
+                      <motion.tr
+                        key={session.id}
+                        className="border-b hover:bg-muted/50"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <td className="p-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={session.student?.avatarUrl} />
+                              <AvatarFallback>
+                                {session.student?.name?.charAt(0) || 'S'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{session.student?.name}</span>
+                          </div>
                         </td>
-                      </tr>
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {session.subject || 'General'}
+                        </td>
+                        <td className="p-2">
+                          <Badge variant="default" className="bg-green-600">
+                            Active
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {session.messages?.length > 0 ? 'Recently' : 'Never'}
+                        </td>
+                        <td className="p-2">
+                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startChat(session)}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Chat
+                            </Button>
+                          </motion.div>
+                        </td>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                <div>
-                  Showing {(filteredSessions.length===0)?0:((currentPage-1)*pageSize+1)}–{Math.min(currentPage*pageSize, filteredSessions.length)} of {filteredSessions.length}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="px-2 py-1 rounded border disabled:opacity-50" disabled={currentPage<=1} onClick={()=>setPage(currentPage-1)}>Prev</button>
-                  <span>Page {currentPage} / {totalPages}</span>
-                  <button className="px-2 py-1 rounded border disabled:opacity-50" disabled={currentPage>=totalPages} onClick={()=>setPage(currentPage+1)}>Next</button>
-                </div>
-              </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
-    </div>
+
+      {/* Chat Dialog */}
+      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+        <DialogContent className="max-w-4xl h-[80vh] p-0">
+          <motion.div
+            variants={dialogVariants}
+            initial="hidden"
+            animate="visible"
+            className="h-full"
+          >
+            {selectedSession && (
+              <ChatWindow
+                sessionId={selectedSession.id}
+                otherUser={selectedSession.student}
+                currentUser={user}
+              />
+            )}
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
   )
 }

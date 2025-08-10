@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { IoMdArrowBack } from "react-icons/io"
-import { FcGoogle } from "react-icons/fc"
 import { FaRegUser, FaRegEye, FaRegEyeSlash } from "react-icons/fa"
 import { CiMail } from "react-icons/ci"
 import { MdLockOutline } from "react-icons/md"
@@ -79,11 +78,6 @@ export default function SignupPage() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    localStorage.setItem('selectedRole', formData.role)
-    toast.info("Google OAuth will be implemented soon!")
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative">
       <motion.div
@@ -99,7 +93,7 @@ export default function SignupPage() {
           </Link>
           
           <h2 className="text-2xl font-bold mb-2 flex justify-center items-center text-white">Create Account</h2>
-          <p className="text-sm text-gray-400 mb-6 flex justify-center items-center">Join MentorNow and start your learning journey</p>
+          <p className="text-sm text-gray-400 mb-6 flex justify-center items-center">Join Acadly and start your learning journey</p>
 
           {/* Role Selector */}
           <div className="mb-6">
@@ -134,25 +128,6 @@ export default function SignupPage() {
                 : "Join as a mentor to help students learn"
               }
             </p>
-          </div>
-
-          <div className="flex flex-col mb-6">
-            <button 
-              className="flex justify-center items-center gap-4 py-2 rounded-md backdrop-blur-xs bg-[#292929]/80 text-white w-full hover:bg-[#333333]/80 transition-colors"
-              onClick={handleGoogleLogin}
-              type="button"
-            >
-              <FcGoogle className="text-lg" />
-              Continue with Google
-            </button>
-          </div>
-
-          <div className="flex items-center my-6">
-            <hr className="grow border-[#2A2A2A]" />
-            <div className="rounded-3xl max-w-md">
-              <span className="text-xs mx-3 text-gray-400">OR CONTINUE WITH EMAIL</span>
-            </div>
-            <hr className="grow border-[#2A2A2A]" />
           </div>
 
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>

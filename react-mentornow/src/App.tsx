@@ -20,7 +20,7 @@ import { BackgroundCircles } from './components/ui/background-circles'
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="mentornow-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="acadly-theme">
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-background relative">

@@ -182,7 +182,7 @@ async function main() {
           subject: randomOf(subjects),
           score,
           maxScore,
-          type: randomOf(progressTypes),
+          type: randomOf(progressTypes) as any,
           description: randomOf([
             'Midterm exam',
             'Homework assignment',

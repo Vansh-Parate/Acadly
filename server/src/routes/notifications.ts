@@ -104,6 +104,18 @@ router.put('/:id/read', requireAuth, async (req, res) => {
   const notificationId = Number(req.params.id)
 
   try {
+    // First check if the notification exists and belongs to the user
+    const existingNotification = await prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        userId
+      }
+    })
+
+    if (!existingNotification) {
+      return res.status(404).json({ error: 'Notification not found' })
+    }
+
     const notification = await prisma.notification.update({
       where: {
         id: notificationId,
