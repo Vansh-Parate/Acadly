@@ -24,28 +24,36 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = process.env.CORS_ORIGIN 
-      ? process.env.CORS_ORIGIN.includes(',') 
-        ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-        : [process.env.CORS_ORIGIN, 'http://localhost:5173', 'http://localhost:3000']
-      : ['http://localhost:5173', 'http://localhost:3000'];
+    // Normalize the incoming origin by removing trailing slash
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Define allowed origins
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://acadly-mentor.vercel.app'
+    ];
+    
+    // Add any additional origins from environment variable
+    if (process.env.CORS_ORIGIN) {
+      const envOrigins = process.env.CORS_ORIGIN.split(',').map(origin => origin.trim().replace(/\/$/, ''));
+      allowedOrigins.push(...envOrigins);
+    }
     
     // Debug logging
-    console.log('CORS check:', { origin, allowedOrigins, CORS_ORIGIN: process.env.CORS_ORIGIN });
-    
-    // Check if origin matches any allowed origin (with or without trailing slash)
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      const normalizedOrigin = origin.replace(/\/$/, ''); // Remove trailing slash
-      const normalizedAllowed = allowedOrigin.replace(/\/$/, ''); // Remove trailing slash
-      const matches = normalizedOrigin === normalizedAllowed;
-      console.log('Origin comparison:', { normalizedOrigin, normalizedAllowed, matches });
-      return matches;
+    console.log('CORS check:', { 
+      originalOrigin: origin, 
+      normalizedOrigin, 
+      allowedOrigins,
+      CORS_ORIGIN: process.env.CORS_ORIGIN 
     });
     
-    if (isAllowed) {
+    // Check if normalized origin is in allowed list
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      console.log('CORS allowed:', normalizedOrigin);
       callback(null, true);
     } else {
-      console.log('CORS blocked:', origin);
+      console.log('CORS blocked:', normalizedOrigin);
       callback(new Error('Not allowed by CORS'));
     }
   },
