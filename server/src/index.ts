@@ -20,11 +20,35 @@ const app = express()
 
 // CORS configuration for both development and production
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.includes(',') 
-      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-      : [process.env.CORS_ORIGIN, 'http://localhost:5173', 'http://localhost:3000']
-    : /^http:\/\/localhost:\d+$/,
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.includes(',') 
+        ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+        : [process.env.CORS_ORIGIN, 'http://localhost:5173', 'http://localhost:3000']
+      : ['http://localhost:5173', 'http://localhost:3000'];
+    
+    // Debug logging
+    console.log('CORS check:', { origin, allowedOrigins, CORS_ORIGIN: process.env.CORS_ORIGIN });
+    
+    // Check if origin matches any allowed origin (with or without trailing slash)
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      const normalizedOrigin = origin.replace(/\/$/, ''); // Remove trailing slash
+      const normalizedAllowed = allowedOrigin.replace(/\/$/, ''); // Remove trailing slash
+      const matches = normalizedOrigin === normalizedAllowed;
+      console.log('Origin comparison:', { normalizedOrigin, normalizedAllowed, matches });
+      return matches;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
