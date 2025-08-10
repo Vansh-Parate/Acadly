@@ -17,7 +17,20 @@ import { prisma } from './prisma'
 dotenv.config()
 
 const app = express()
-app.use(cors({ origin: process.env.CORS_ORIGIN || /^http:\/\/localhost:\d+$/, credentials: true }))
+
+// CORS configuration for both development and production
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.includes(',') 
+      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+      : [process.env.CORS_ORIGIN, 'http://localhost:5173', 'http://localhost:3000']
+    : /^http:\/\/localhost:\d+$/,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
+app.use(cors(corsOptions))
 app.use(express.json())
 
 app.get('/health', (_req, res) => {
