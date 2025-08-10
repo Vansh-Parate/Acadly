@@ -206,7 +206,7 @@ export default function MentorDashboard() {
     try {
       const token = localStorage.getItem('token')
       const response = await fetch(`${API_BASE}/mentor/requests/${requestId}/decline`, {
-        method: 'PUT',
+      method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -292,8 +292,8 @@ export default function MentorDashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
                   <p className="text-xs text-muted-foreground">{stat.desc}</p>
-                </CardContent>
-              </Card>
+             </CardContent>
+           </Card>
             </motion.div>
           ))}
         </motion.div>
@@ -336,20 +336,20 @@ export default function MentorDashboard() {
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ scale: 1.02 }}
                         >
-                          <div className="flex items-center gap-3">
+               <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={request.student?.avatarUrl} />
                               <AvatarFallback>
                                 {request.student?.name?.charAt(0) || 'S'}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
+                 <div>
                               <p className="font-medium">{request.student?.name}</p>
                               <p className="text-sm text-muted-foreground">
                                 {request.subject} • {request.duration} minutes
                               </p>
-                            </div>
-                          </div>
+                 </div>
+               </div>
                           <div className="flex gap-2">
                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                               <Button
@@ -371,19 +371,19 @@ export default function MentorDashboard() {
                                 Decline
                               </Button>
                             </motion.div>
-                          </div>
+                 </div>
                         </motion.div>
                       ))}
                     </AnimatePresence>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+               </div>
+             </CardContent>
+           </Card>
           </motion.div>
 
           {/* Upcoming Sessions */}
           <motion.div variants={itemVariants}>
-            <Card>
+          <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -392,8 +392,8 @@ export default function MentorDashboard() {
                 <CardDescription>
                   Accepted sessions ready to start
                 </CardDescription>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="space-y-4">
                   {upcomingSessions.length === 0 ? (
                     <motion.div 
@@ -446,7 +446,7 @@ export default function MentorDashboard() {
                                 {session.subject} • Accepted {session.acceptedAt ? new Date(session.acceptedAt).toLocaleDateString() : 'recently'}
                               </p>
                             </div>
-                          </div>
+                    </div>
                           <div className="flex gap-2">
                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                               <Button
@@ -458,14 +458,14 @@ export default function MentorDashboard() {
                                 Start Session
                               </Button>
                             </motion.div>
-                          </div>
+                  </div>
                         </motion.div>
                       ))}
                     </AnimatePresence>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
           </motion.div>
         </div>
 
@@ -544,7 +544,7 @@ export default function MentorDashboard() {
             </CardContent>
           </Card>
         </motion.div>
-      </div>
+        </div>
 
       {/* Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
