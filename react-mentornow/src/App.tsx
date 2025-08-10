@@ -41,7 +41,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/dashboard/mentor" 
+                path="/mentor-dashboard" 
                 element={
                   <ProtectedRoute allowedRoles={["MENTOR"]}>
                     <MentorDashboard />
@@ -49,7 +49,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/mentor/profile" 
+                path="/mentor-profile" 
                 element={
                   <ProtectedRoute allowedRoles={["MENTOR"]}>
                     <MentorProfile />
@@ -57,18 +57,10 @@ function App() {
                 } 
               />
               <Route 
-                path="/mentor/sessions" 
+                path="/mentor-sessions" 
                 element={
                   <ProtectedRoute allowedRoles={["MENTOR"]}>
                     <MentorSessions />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/dashboard/admin" 
-                element={
-                  <ProtectedRoute allowedRoles={["ADMIN"]}>
-                    <AdminDashboard />
                   </ProtectedRoute>
                 } 
               />

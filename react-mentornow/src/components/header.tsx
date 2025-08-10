@@ -10,19 +10,26 @@ export default function Header() {
   const role = user?.role
 
   const navItems = (() => {
-    if (role === 'MENTOR') {
+    if (!user) return []
+    if (role === 'STUDENT') {
       return [
-        { to: '/dashboard/mentor', label: 'Overview' },
-        { to: '/mentor/sessions', label: 'Sessions' },
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/my-sessions', label: 'My Sessions' },
       ]
     }
-    // default/student
-    return [
-      { to: '/dashboard', label: 'Dashboard' },
-      { to: '/mentors', label: 'Find Mentors' },
-      { to: '/my-sessions', label: 'My Sessions' },
-      { to: '/profile', label: 'Profile' },
-    ]
+    if (role === 'MENTOR') {
+      return [
+        { to: '/mentor-dashboard', label: 'Dashboard' },
+        { to: '/mentor-sessions', label: 'Sessions' },
+        { to: '/mentor-profile', label: 'Profile' },
+      ]
+    }
+    if (role === 'ADMIN') {
+      return [
+        { to: '/admin', label: 'Admin' },
+      ]
+    }
+    return []
   })()
 
   const navigate = useNavigate()

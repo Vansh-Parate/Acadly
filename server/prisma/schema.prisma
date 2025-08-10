@@ -22,6 +22,10 @@ model User {
   sentRequests     SessionRequest[] @relation("StudentRequests")
   receivedRequests SessionRequest[] @relation("MentorRequests")
   sentMessages     ChatMessage[]    @relation("UserMessages")
+  notifications    Notification[]   @relation("UserNotifications")
+  progressEntries  ProgressEntry[]  @relation("UserProgress")
+  scheduledSessions ScheduledSession[] @relation("UserScheduledSessions")
+  mentorSessions   ScheduledSession[] @relation("MentorScheduledSessions")
 }
 
 model Profile {
@@ -61,10 +65,62 @@ model ChatMessage {
   message     String
   isAiMessage Boolean   @default(false)
   aiTopics    String[]
+  fileUrl     String?   // For file uploads
+  fileName    String?   // Original filename
+  fileSize    Int?      // File size in bytes
+  fileType    String?   // MIME type
   createdAt   DateTime  @default(now())
 
   session     SessionRequest? @relation(fields: [sessionId], references: [id])
   fromUser    User      @relation("UserMessages", fields: [fromUserId], references: [id])
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean   @default(false)
+  relatedId   Int?      // ID of related session, message, etc.
+  relatedType String?   // Type of related item
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation("UserNotifications", fields: [userId], references: [id])
+}
+
+model ProgressEntry {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  subject     String
+  score       Float
+  maxScore    Float
+  type        ProgressType
+  description String?
+  date        DateTime  @default(now())
+
+  user        User      @relation("UserProgress", fields: [userId], references: [id])
+}
+
+model ScheduledSession {
+  id          Int       @id @default(autoincrement())
+  studentId   Int
+  mentorId    Int
+  title       String
+  description String?
+  subject     String
+  startTime   DateTime
+  endTime     DateTime
+  status      SessionStatus @default(SCHEDULED)
+  meetingType MeetingType @default(VIDEO)
+  location    String?
+  meetingLink String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  student     User      @relation("UserScheduledSessions", fields: [studentId], references: [id])
+  mentor      User      @relation("MentorScheduledSessions", fields: [mentorId], references: [id])
 }
 
 enum UserRole { 
@@ -79,4 +135,34 @@ enum RequestStatus {
   REJECTED 
   CANCELLED 
   FINISHED 
+}
+
+enum NotificationType {
+  MESSAGE
+  SESSION
+  RATING
+  REMINDER
+  SYSTEM
+}
+
+enum ProgressType {
+  QUIZ
+  ASSIGNMENT
+  PROJECT
+  SESSION
+  MILESTONE
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MeetingType {
+  VIDEO
+  AUDIO
+  IN_PERSON
 }

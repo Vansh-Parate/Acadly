@@ -15,9 +15,9 @@ function getRoleBasedRedirect(role: string) {
     case "STUDENT":
       return "/dashboard"
     case "MENTOR":
-      return "/dashboard/mentor"
+      return "/mentor-dashboard"
     case "ADMIN":
-      return "/dashboard/admin"
+      return "/admin"
     default:
       return "/dashboard"
   }

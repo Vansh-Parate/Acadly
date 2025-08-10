@@ -13,10 +13,20 @@ function addDays(base: Date, days: number): Date {
   return d
 }
 
+function addHours(base: Date, hours: number): Date {
+  const d = new Date(base)
+  d.setHours(d.getHours() + hours)
+  return d
+}
+
 async function main() {
   const reset = process.env.SEED_RESET !== 'false'
   if (reset) {
+    // Delete in order to respect foreign key constraints
     await prisma.chatMessage.deleteMany()
+    await prisma.notification.deleteMany()
+    await prisma.progressEntry.deleteMany()
+    await prisma.scheduledSession.deleteMany()
     await prisma.sessionRequest.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.user.deleteMany()
@@ -72,7 +82,8 @@ async function main() {
     RequestStatus.CANCELLED,
   ]
 
-  const totalToCreate = 200
+  const sessionRequests = []
+  const totalToCreate = 50
   for (let i = 0; i < totalToCreate; i++) {
     const mentor = randomOf(mentors)
     const student = randomOf(students)
@@ -80,7 +91,7 @@ async function main() {
     const createdAt = addDays(today, -daysAgo)
     const status = randomOf(statuses)
 
-    await prisma.sessionRequest.create({
+    const sessionRequest = await prisma.sessionRequest.create({
       data: {
         studentId: student.id,
         mentorId: mentor.id,
@@ -91,9 +102,177 @@ async function main() {
         aiAnalysis: { difficulty: Math.ceil(Math.random() * 5) },
       },
     })
+    sessionRequests.push(sessionRequest)
   }
 
-  console.log('✔ Seed complete')
+  // Create scheduled sessions
+  const scheduledSessions = []
+  for (let i = 0; i < 30; i++) {
+    const mentor = randomOf(mentors)
+    const student = randomOf(students)
+    const daysFromNow = Math.floor(Math.random() * 30) // within next 30 days
+    const startTime = addDays(today, daysFromNow)
+    startTime.setHours(9 + Math.floor(Math.random() * 12), 0, 0, 0) // 9 AM to 9 PM
+    const endTime = addHours(startTime, 1 + Math.floor(Math.random() * 2)) // 1-3 hour sessions
+
+    const session = await prisma.scheduledSession.create({
+      data: {
+        studentId: student.id,
+        mentorId: mentor.id,
+        title: `${randomOf(subjects)} Session`,
+        description: 'Regular tutoring session',
+        subject: randomOf(subjects),
+        startTime,
+        endTime,
+        status: randomOf(['SCHEDULED', 'COMPLETED', 'CANCELLED']),
+        meetingType: randomOf(['VIDEO', 'AUDIO', 'IN_PERSON']),
+        location: randomOf(['Zoom', 'Google Meet', 'Campus Library', 'Coffee Shop']),
+        meetingLink: randomOf(['https://zoom.us/j/123456789', 'https://meet.google.com/abc-defg-hij', null]),
+      },
+    })
+    scheduledSessions.push(session)
+  }
+
+  // Create chat messages for accepted/finished sessions
+  const acceptedSessions = sessionRequests.filter(s => s.status === RequestStatus.ACCEPTED || s.status === RequestStatus.FINISHED)
+  for (const session of acceptedSessions.slice(0, 20)) { // Limit to 20 sessions to avoid too many messages
+    const messageCount = 5 + Math.floor(Math.random() * 10) // 5-15 messages per session
+    for (let i = 0; i < messageCount; i++) {
+      const isStudent = Math.random() > 0.5
+      const senderId = isStudent ? session.studentId : session.mentorId
+      const messageTime = addHours(session.createdAt, i * 2) // Messages every 2 hours
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: session.id,
+          fromUserId: senderId,
+          message: randomOf([
+            'Hi! I have a question about the homework.',
+            'Can you explain this concept again?',
+            'Thanks for the help!',
+            'I think I understand now.',
+            'Could you send me the notes?',
+            'When is our next session?',
+            'I found this helpful resource.',
+            'The assignment is due tomorrow.',
+            'Can we reschedule?',
+            'Great session today!'
+          ]),
+          isAiMessage: false,
+          aiTopics: [],
+          createdAt: messageTime,
+        },
+      })
+    }
+  }
+
+  // Create progress entries for students
+  const progressTypes = ['QUIZ', 'ASSIGNMENT', 'PROJECT', 'SESSION', 'MILESTONE']
+  for (const student of students) {
+    const entryCount = 10 + Math.floor(Math.random() * 20) // 10-30 entries per student
+    for (let i = 0; i < entryCount; i++) {
+      const daysAgo = Math.floor(Math.random() * 90) // within last 90 days
+      const entryDate = addDays(today, -daysAgo)
+      const score = 60 + Math.floor(Math.random() * 40) // 60-100 score
+      const maxScore = 100
+
+      await prisma.progressEntry.create({
+        data: {
+          userId: student.id,
+          subject: randomOf(subjects),
+          score,
+          maxScore,
+          type: randomOf(progressTypes),
+          description: randomOf([
+            'Midterm exam',
+            'Homework assignment',
+            'Final project',
+            'Practice quiz',
+            'Lab report',
+            'Group presentation',
+            'Research paper',
+            'Online assessment'
+          ]),
+          date: entryDate,
+        },
+      })
+    }
+  }
+
+  // Create notifications for users
+  const notificationTypes = ['MESSAGE', 'SESSION', 'RATING', 'REMINDER', 'SYSTEM']
+  for (const user of [...students, ...mentors]) {
+    const notificationCount = 5 + Math.floor(Math.random() * 10) // 5-15 notifications per user
+    for (let i = 0; i < notificationCount; i++) {
+      const daysAgo = Math.floor(Math.random() * 30) // within last 30 days
+      const createdAt = addDays(today, -daysAgo)
+      const type = randomOf(notificationTypes)
+      
+      let title, message
+      switch (type) {
+        case 'MESSAGE':
+          title = 'New message received'
+          message = 'You have a new message from your mentor/student'
+          break
+        case 'SESSION':
+          title = 'Session reminder'
+          message = 'Your session starts in 1 hour'
+          break
+        case 'RATING':
+          title = 'New rating received'
+          message = 'You received a 5-star rating!'
+          break
+        case 'REMINDER':
+          title = 'Homework reminder'
+          message = 'Don\'t forget to complete your assignment'
+          break
+        case 'SYSTEM':
+          title = 'System update'
+          message = 'New features are available'
+          break
+        default:
+          title = 'Notification'
+          message = 'You have a new notification'
+      }
+
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          type: type as any,
+          title,
+          message,
+          isRead: Math.random() > 0.3, // 70% read
+          relatedId: randomOf([1, 2, 3, 4, 5]),
+          relatedType: randomOf(['session', 'message', 'rating']),
+          createdAt,
+        },
+      })
+    }
+  }
+
+  // Create an admin user
+  await prisma.user.create({
+    data: { 
+      email: 'admin@example.com', 
+      password: await bcrypt.hash('admin123', 12), 
+      name: 'Admin User', 
+      role: UserRole.ADMIN 
+    },
+  })
+
+  console.log('✔ Seed complete with comprehensive data for all features!')
+  console.log('📊 Created:')
+  console.log(`   - ${mentors.length} mentors`)
+  console.log(`   - ${students.length} students`)
+  console.log(`   - ${sessionRequests.length} session requests`)
+  console.log(`   - ${scheduledSessions.length} scheduled sessions`)
+  console.log(`   - Chat messages for ${acceptedSessions.length} sessions`)
+  console.log(`   - Progress entries for all students`)
+  console.log(`   - Notifications for all users`)
+  console.log('🔑 Login credentials:')
+  console.log('   - Students: alice@example.com, brian@example.com, etc. (password: seeded)')
+  console.log('   - Mentors: mentor.alex@example.com, mentor.priya@example.com, etc. (password: seeded)')
+  console.log('   - Admin: admin@example.com (password: admin123)')
 }
 
 main()

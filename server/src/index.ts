@@ -7,6 +7,9 @@ import mentorRoutes from './routes/mentor'
 import mentorsRoutes from './routes/mentors'
 import sessionsRoutes from './routes/sessions'
 import chatRoutes from './routes/chat'
+import notificationsRoutes from './routes/notifications'
+import progressRoutes from './routes/progress'
+import scheduledSessionsRoutes from './routes/scheduled-sessions'
 import http from 'http'
 import { WebSocketServer, WebSocket, RawData } from 'ws'
 
@@ -26,6 +29,9 @@ app.use('/mentor', mentorRoutes)
 app.use('/mentors', mentorsRoutes)
 app.use('/sessions', sessionsRoutes)
 app.use('/chat', chatRoutes)
+app.use('/notifications', notificationsRoutes)
+app.use('/progress', progressRoutes)
+app.use('/scheduled-sessions', scheduledSessionsRoutes)
 
 const server = http.createServer(app)
 
