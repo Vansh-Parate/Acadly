@@ -6,7 +6,7 @@ import { motion } from "framer-motion"
 
 export default function LandingHero() {
   return (
-    <section className="relative overflow-hidden py-20 md:py-32">
+    <section id="home" className="relative overflow-hidden py-20 md:py-32">
       <div className="container max-w-6xl mx-auto px-4">
         <div className="flex flex-col items-center text-center space-y-8">
           <motion.div

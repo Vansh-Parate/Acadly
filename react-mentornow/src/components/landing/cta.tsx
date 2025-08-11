@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 
 export default function LandingCTA() {
   return (
-    <section className="py-20 md:py-32">
+    <section id="get-started" className="py-20 md:py-32">
       <div className="container max-w-4xl mx-auto px-4">
         <motion.div
           initial={{ y: 20, opacity: 0 }}

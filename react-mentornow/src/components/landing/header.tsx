@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
-import { Monitor, Moon, Sun, Sparkles } from 'lucide-react'
-import { motion } from "framer-motion"
+import { Monitor, Moon, Sun, Menu, X } from 'lucide-react'
+import { motion, AnimatePresence } from "framer-motion"
+import { useState } from "react"
 
 export default function LandingHeader() {
   const { theme, setTheme } = useTheme()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const cycleTheme = () => {
     if (theme === "light") setTheme("dark")
@@ -18,6 +20,12 @@ export default function LandingHeader() {
     if (theme === "dark") return <Moon className="h-4 w-4" />
     return <Monitor className="h-4 w-4" />
   }
+
+  const navItems = [
+    { href: "#home", label: "Home" },
+    { href: "#features", label: "Features" },
+    { href: "#get-started", label: "Get Started" }
+  ]
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -40,29 +48,82 @@ export default function LandingHeader() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm">
-          <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
-            Features
-          </a>
-          <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
-            How it works
-          </a>
-          <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-            Pricing
-          </a>
+          {navItems.map((item) => (
+            <a 
+              key={item.href}
+              href={item.href} 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
 
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={cycleTheme} aria-label="Toggle theme">
             <ThemeIcon />
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild className="hidden sm:flex">
             <Link to="/login">Sign in</Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="hidden sm:flex">
             <Link to="/signup">Get started</Link>
+          </Button>
+          
+          {/* Mobile menu button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
         </div>
       </div>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden border-t bg-background/95 backdrop-blur"
+          >
+            <nav className="container max-w-6xl mx-auto px-4 py-4 space-y-2">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ))}
+              <div className="pt-4 border-t space-y-2">
+                <Link 
+                  to="/login" 
+                  className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link 
+                  to="/signup" 
+                  className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Get started
+                </Link>
+              </div>
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }
