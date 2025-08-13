@@ -39,15 +39,7 @@ const corsOptions = {
       const envOrigins = process.env.CORS_ORIGIN.split(',').map(origin => origin.trim().replace(/\/$/, ''));
       allowedOrigins.push(...envOrigins);
     }
-    
-    // Debug logging
-    console.log('CORS check:', { 
-      originalOrigin: origin, 
-      normalizedOrigin, 
-      allowedOrigins,
-      CORS_ORIGIN: process.env.CORS_ORIGIN 
-    });
-    
+        
     // Check if normalized origin is in allowed list
     if (allowedOrigins.includes(normalizedOrigin)) {
       console.log('CORS allowed:', normalizedOrigin);

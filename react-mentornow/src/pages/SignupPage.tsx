@@ -78,6 +78,34 @@ export default function SignupPage() {
     }
   }
 
+  const performLogin = async (email: string, password: string) => {
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed')
+      }
+
+      login(data.token, data.user)
+      toast.success("Login successful!")
+      
+      const redirectPath = getRoleBasedRedirect(data.user.role)
+      navigate(redirectPath, { replace: true })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Login failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative">
       <motion.div
@@ -200,6 +228,27 @@ export default function SignupPage() {
               Sign in
             </Link>
           </p>
+
+          {/* Minimal Test User Section */}
+          <div className="mt-6 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+            <p className="text-xs text-gray-400 text-center mb-2">Try demo accounts</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => performLogin('alice@example.com', 'seeded')}
+                className="text-xs px-3 py-1 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                disabled={isLoading}
+              >
+                Student
+              </button>
+              <button
+                onClick={() => performLogin('mentor.alex@example.com', 'seeded')}
+                className="text-xs px-3 py-1 bg-green-500/20 text-green-400 rounded border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                disabled={isLoading}
+              >
+                Mentor
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>

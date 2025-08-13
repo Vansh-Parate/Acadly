@@ -33,7 +33,8 @@ import ProgressTracker from '@/components/analytics/ProgressTracker'
 import SessionCalendar from '@/components/calendar/SessionCalendar'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { API_BASE } from '@/lib/api'
-import { notificationsAPI, progressAPI, scheduledSessionsAPI, chatAPI } from '@/lib/api'
+import { notificationsAPI, progressAPI, scheduledSessionsAPI, chatAPI, mentorsAPI } from '@/lib/api'
+import { toast } from 'sonner'
 
 // Animation variants
 const containerVariants = {
@@ -106,6 +107,81 @@ function DashboardContent() {
   const [chatSessions, setChatSessions] = useState<any[]>([])
   const [selectedChatSession, setSelectedChatSession] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [mentors, setMentors] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isUsingSearchResults, setIsUsingSearchResults] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const token = localStorage.getItem('token')
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) return
+      
+      try {
+        setIsLoading(true)
+        
+        // Fetch all data in parallel
+        const [sessionsData, mentorsData] = await Promise.all([
+          scheduledSessionsAPI.getAll(token),
+          mentorsAPI.getAll()
+        ])
+        
+        setScheduledSessions(sessionsData.sessions || [])
+        setMentors(mentorsData.mentors || [])
+        
+        // Set default stats since we don't have a stats API
+        setStats({
+          totalSessions: sessionsData.sessions?.length || 0,
+          completedSessions: sessionsData.sessions?.filter((s: any) => s.status === 'COMPLETED')?.length || 0,
+          pendingSessions: sessionsData.sessions?.filter((s: any) => s.status === 'PENDING')?.length || 0,
+          averageRating: 4.8,
+        })
+        
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error)
+        toast.error('Failed to load dashboard data')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [token])
+
+  // Handle search results
+  const handleSearchResults = (results: any[]) => {
+    setSearchResults(results)
+    setIsUsingSearchResults(true)
+  }
+
+  const handleSearching = (searching: boolean) => {
+    setIsSearching(searching)
+  }
+
+  const clearSearch = () => {
+    setIsUsingSearchResults(false)
+    setSearchResults([])
+  }
+
+  // Get the mentors to display (either search results or all mentors)
+  const displayMentors = (isUsingSearchResults ? searchResults : mentors).map((mentor: any) => ({
+    id: mentor.id,
+    name: mentor.name || 'Unknown Mentor',
+    avatarUrl: mentor.avatarUrl,
+    subjects: Array.isArray(mentor.subjects) ? mentor.subjects : 
+              (mentor.profile?.subjects ? 
+                (Array.isArray(mentor.profile.subjects) ? mentor.profile.subjects : 
+                 String(mentor.profile.subjects).split(',').map((s: string) => s.trim()).filter(Boolean)) : 
+               []),
+    rating: mentor.rating || mentor.profile?.rating || 0,
+    hourlyRate: mentor.hourlyRate || mentor.profile?.hourlyRate || 0,
+    successRate: mentor.successRate || mentor.profile?.successRate || 0.82,
+    aiScore: mentor.aiScore || mentor.profile?.aiScore || 0.76,
+    availableNow: mentor.availableNow || mentor.profile?.availability || false,
+    bio: mentor.bio || mentor.profile?.description || "Helpful mentor with practical tips"
+  }))
 
   useEffect(() => {
     if (user) {
@@ -211,34 +287,6 @@ function DashboardContent() {
     }
   }
 
-  const [mentors, setMentors] = useState<any[]>([])
-  useEffect(() => {
-    fetch(`${API_BASE}/mentors`)
-      .then((r) => r.json())
-      .then((d) =>
-        setMentors(
-          Array.isArray(d?.mentors)
-            ? d.mentors.map((m: any) => ({
-                id: m.id,
-                name: m.name || 'Mentor',
-                avatarUrl: m.avatarUrl || undefined,
-                subjects: String(m.profile?.subjects || '')
-                  .split(',')
-                  .map((s: string) => s.trim())
-                  .filter(Boolean),
-                rating: m.profile?.rating ?? 4.7,
-                hourlyRate: m.profile?.hourlyRate ?? 0,
-                successRate: m.profile?.successRate ?? 0.82,
-                aiScore: m.profile?.aiScore ?? 0.75,
-                availableNow: true,
-                bio: 'Experienced mentor',
-              }))
-            : []
-        )
-      )
-      .catch(() => setMentors([]))
-  }, [])
-
   const handleLogout = () => logout()
 
   const getRoleColor = (role: string) => {
@@ -343,9 +391,9 @@ function DashboardContent() {
               </TabsTrigger>
             </TabsList>
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="sync">
               {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
+              <TabsContent key="overview" value="overview" className="space-y-6">
                 <motion.div
                   variants={tabVariants}
                   initial="hidden"
@@ -355,12 +403,28 @@ function DashboardContent() {
                 >
                   {/* Search bar and filters */}
                   <motion.div variants={itemVariants}>
-                    <SearchBar />
+                    <SearchBar 
+                      onSearchResults={handleSearchResults}
+                      onSearching={handleSearching}
+                    />
                   </motion.div>
 
                   {/* Recommended mentors from backend */}
                   <motion.div variants={itemVariants}>
-                    <MatchingResults mentors={mentors as any} />
+                    {isSearching ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          Searching mentors...
+                        </div>
+                      </div>
+                    ) : (
+                      <MatchingResults 
+                        mentors={displayMentors as any} 
+                        isSearchResults={isUsingSearchResults}
+                        onClearSearch={clearSearch}
+                      />
+                    )}
                   </motion.div>
 
                   {/* Quick Stats */}
@@ -374,7 +438,7 @@ function DashboardContent() {
                       { title: "Pending", value: stats.pendingSessions, icon: Clock, color: "text-yellow-500" },
                       { title: "Average Rating", value: stats.averageRating, icon: Star, color: "text-yellow-500" }
                     ].map((stat, index) => (
-                      <motion.div key={stat.title} variants={cardVariants} whileHover="hover">
+                      <motion.div key={`stat-${stat.title}`} variants={cardVariants} whileHover="hover">
                         <Card className="h-full">
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -408,7 +472,7 @@ function DashboardContent() {
                         <div className="space-y-4">
                           {scheduledSessions.slice(0, 3).map((session, index) => (
                             <motion.div 
-                              key={session.id} 
+                              key={`session-${session.id}`} 
                               className="flex items-center justify-between p-3 border rounded-lg"
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
@@ -439,7 +503,7 @@ function DashboardContent() {
               </TabsContent>
 
               {/* Chat Tab */}
-              <TabsContent value="chat" className="space-y-6">
+              <TabsContent key="chat" value="chat" className="space-y-6">
                 <motion.div
                   variants={tabVariants}
                   initial="hidden"
@@ -461,7 +525,7 @@ function DashboardContent() {
                           <div className="space-y-2">
                             {chatSessions.map((session, index) => (
                               <motion.div
-                                key={session.id}
+                                key={`chat-session-${session.id}`}
                                 className={`p-3 rounded-lg cursor-pointer transition-colors ${
                                   selectedChatSession?.id === session.id
                                     ? 'bg-primary/10 border border-primary/20'
@@ -522,7 +586,7 @@ function DashboardContent() {
               </TabsContent>
 
               {/* Calendar Tab */}
-              <TabsContent value="calendar" className="space-y-6">
+              <TabsContent key="calendar" value="calendar" className="space-y-6">
                 <motion.div
                   variants={tabVariants}
                   initial="hidden"
@@ -541,7 +605,7 @@ function DashboardContent() {
               </TabsContent>
 
               {/* Progress Tab */}
-              <TabsContent value="progress" className="space-y-6">
+              <TabsContent key="progress" value="progress" className="space-y-6">
                 <motion.div
                   variants={tabVariants}
                   initial="hidden"
@@ -568,7 +632,7 @@ function DashboardContent() {
               </TabsContent>
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="space-y-6">
+              <TabsContent key="notifications" value="notifications" className="space-y-6">
                 <motion.div
                   variants={tabVariants}
                   initial="hidden"
