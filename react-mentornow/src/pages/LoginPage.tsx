@@ -155,14 +155,14 @@ export default function LoginPage() {
             <div className="flex gap-2 justify-center">
               <button
                 onClick={() => performLogin('alice@example.com', 'seeded')}
-                className="text-xs px-3 py-1 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                className="text-xs px-3 py-1 bg-blue-500/20 text-blue-400 cursor-pointer rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
                 disabled={isLoading}
               >
                 Student
               </button>
               <button
                 onClick={() => performLogin('mentor.alex@example.com', 'seeded')}
-                className="text-xs px-3 py-1 bg-green-500/20 text-green-400 rounded border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                className="text-xs px-3 py-1 bg-green-500/20 text-green-400 rounded cursor-pointer border border-green-500/30 hover:bg-green-500/30 transition-colors"
                 disabled={isLoading}
               >
                 Mentor
